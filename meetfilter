@@ -1,0 +1,274 @@
+/************************************************/
+/* 1.Meet as in weighted minkowski sum (without GLPK)*/
+/************************************************/
+
+t1p_t *
+t1p_meet (ap_manager_t * man, bool destructive, t1p_t * a1, t1p_t * a2)
+/* TODO: destructive not used */
+{
+  //int b;
+  //scanf("%f",&b);
+  CALL ();
+  t1p_internal_t *prbx1 = t1p_init_from_manager (man, AP_FUNID_MEET);
+  /*#ifdef _T1P_DEBUG
+    fprintf(stdout, "### MEET OPERANDS (destructive %d)###\n",destructive);
+    t1p_fprint(stdout, man, a1, 0x0);
+    t1p_fprint(stdout, man, a2, 0x0);
+    fprintf(stdout, "### ### ###\n");
+  #endif*/
+  itv_t coeff;
+  itv_init (coeff);
+  num_t num;
+  num_init (num);
+  num_set_double (num, 0);
+  itv_set_num (coeff, num);
+  num_t num2;
+  num_init (num2);
+  num_set_double (num2, 0.1925);
+  itv_t num2coeff;
+  itv_init (num2coeff);
+  itv_set_num (num2coeff,num2);
+  num_t num4;
+  num_init (num4);
+  num_set_double (num4, 3.595);
+  itv_t num4coeff;
+  itv_init (num4coeff);
+  itv_set_num (num4coeff,num4);
+  num_t num6;
+  num_init (num6);
+  num_set_double (num6, -0.2122);
+  itv_t num6coeff;
+  itv_init (num6coeff);
+  itv_set_num (num6coeff,num6);
+  num_t num7;
+  num_init (num7);
+  num_set_double (num7, -0.0003);
+  itv_t num7coeff;
+  itv_init (num7coeff);
+  itv_set_num (num7coeff,num7);
+  num_t num8;
+  num_init (num8);
+  num_set_double (num8, 1.6033);
+  itv_t num8coeff;
+  itv_init (num8coeff);
+  itv_set_num (num8coeff,num8);
+  num_t num9;
+  num_init (num9);
+  num_set_double (num9, 2.3967);
+  itv_t num9coeff;
+  itv_init (num9coeff);
+  itv_set_num (num9coeff,num9);
+  
+
+  int i, j, size, size1, size2;
+
+///////// first generator matrix ///////////////////
+
+  /*itv_t **ptitv1 = (itv_t **) calloc (a1->dims, sizeof (itv_t *));
+  for (i = 0; i < a1->dims; i++)
+    ptitv1[i] = (itv_t *) calloc (prbx1->dim, sizeof (itv_t));
+
+  size1 = t1p_aff_get_generator_matrix_size (prbx1, a1, ptitv1);
+
+//printf("%u", size1);
+
+  itv_t **ptitv2 = (itv_t **) calloc (a1->dims, sizeof (itv_t *));
+  for (i = 0; i < a1->dims; i++)
+    ptitv2[i] = (itv_t *) calloc (size1, sizeof (itv_t));
+
+  t1p_aff_get_generator_matrix_num (prbx1, a1, ptitv1, ptitv2, num2);
+
+//////////////// second generator matrix //////////////////
+
+  itv_t **ptitv3 = (itv_t **) calloc (a2->dims, sizeof (itv_t *));
+  for (i = 0; i < a2->dims; i++)
+    ptitv3[i] = (itv_t *) calloc (prbx1->dim, sizeof (itv_t));
+
+  size2 = t1p_aff_get_generator_matrix_size (prbx1, a2, ptitv3);
+
+//printf("%u", size2);
+
+  itv_t **ptitv4 = (itv_t **) calloc (a2->dims, sizeof (itv_t *));
+  for (i = 0; i < a2->dims; i++)
+    ptitv4[i] = (itv_t *) calloc (size2, sizeof (itv_t));
+
+  t1p_aff_get_generator_matrix_num (prbx1, a2, ptitv3, ptitv4, num4);*/
+
+
+  size = 5; //size1 + size2;
+
+  itv_t **ptitv_meet = (itv_t **) calloc (a2->dims, sizeof (itv_t *));
+  for (i = 0; i < a2->dims; i++)
+    ptitv_meet[i] = (itv_t *) calloc (size, sizeof (itv_t));
+
+/////////// fixed size buffer /////////////////
+
+  //itv_t **ptitv_meet[a1->dims][size];
+
+//printf("%u", size1);
+
+//printf("%u", size2);
+
+  //scanf("%f",&b);
+
+
+ /* for (i = 0; i < a1->dims; i++) {
+    for (j = 0; j < size; j++) {
+      if (j >= (2)) {
+	itv_set (ptitv_meet[i][j], ptitv4[i][j - size1]);
+	//itv_print(ptitv_meet[i][j]);
+      }
+      else {
+	itv_set (ptitv_meet[i][j], ptitv2[i][j]);
+	//itv_print(ptitv_meet[i][j]);
+      }
+      //itv_print(ptitv[i][j]);
+    }
+  }*/
+
+itv_set (ptitv_meet[0][0], num2coeff);
+itv_set (ptitv_meet[0][1], coeff);
+itv_set (ptitv_meet[0][2], num4coeff);
+itv_set (ptitv_meet[0][3], num6coeff);
+itv_set (ptitv_meet[0][4], num7coeff);
+itv_set (ptitv_meet[1][0], coeff);
+itv_set (ptitv_meet[1][1], num8coeff);
+itv_set (ptitv_meet[1][2], num9coeff);
+itv_set (ptitv_meet[1][3], coeff);
+itv_set (ptitv_meet[1][4], coeff);
+
+  //scanf("%f",&b);
+
+//itv_print(ptitv3[0][2]);
+
+//int k=2*prbx1->dim;
+//prbx1->dim=0;
+
+//printf("%u",prbx1->dim);
+
+  t1p_t *tpmeet = t1p_alloc (man, 0, 2);
+  tpmeet->paf[0] = t1p_aff_alloc_init (prbx1);
+  tpmeet->paf[1] = t1p_aff_alloc_init (prbx1);
+
+  t1p_nsym_t *nsymeet1;		//[size];
+  //for (i=0;i<tb->dims;i++){
+  t1p_aaterm_t *p1 = NULL;
+  p1 = a1->paf[0]->q;
+  /*t1p_aaterm_t *p2 = NULL;
+     p2=a2->paf[0]->q; */
+  t1p_aaterm_t *p3 = NULL;
+  p3 = a1->paf[1]->q;
+
+  for (j = 0; j < size; j++) {
+    if (j >= size1) {
+      //if (p2 != NULL){
+      //t1p_aff_build (prbx1, tpmeet->paf[0], ptitv_meet[0][j], p2->pnsym->index);
+      nsymeet1 = t1p_nsym_add (prbx1, UN);  //// IN is for eps and UN is for eta
+      t1p_aff_nsym_add (prbx1, tpmeet->paf[0], ptitv_meet[0][j], nsymeet1);	//////// creating new noise symbols ///////////
+      //scanf("%f",&b);
+      //printf("%u", prbx1->dim);
+      //scanf("%f",&b);
+      t1p_aff_build (prbx1, tpmeet->paf[1], ptitv_meet[1][j], prbx1->dim - 1);	//// using the index of the new noise symbols created above /////////////////
+      //printf("%u", p2->pnsym->index);
+      //p2=p2->n;}
+    }
+    else {
+      if (p1 != NULL && itv_is_eq (ptitv_meet[0][j], coeff) == 0) {
+	t1p_aff_build (prbx1, tpmeet->paf[0], ptitv_meet[0][j], p1->pnsym->index);
+	//printf("%u", p1->pnsym->index);
+	p1 = p1->n;
+      }
+      if (p3 != NULL && itv_is_eq (ptitv_meet[1][j], coeff) == 0) {
+	t1p_aff_build (prbx1, tpmeet->paf[1], ptitv_meet[1][j], p3->pnsym->index);
+	//printf("%u", p3->pnsym->index);
+	p3 = p3->n;
+      }
+    }
+
+    //nsymeet1 = t1p_nsym_add(prbx1, IN);
+    //t1p_aff_nsym_add(prbx1, tpmeet->paf[0], ptitv_meet[0][j], nsymeet1);    //////// creating new noise symbols ///////////
+    //scanf("%f",&b);
+    //printf("%u", prbx1->dim);
+    //scanf("%f",&b);
+    //t1p_aff_build(prbx1, tpmeet->paf[1], ptitv_meet[1][j], prbx1->dim-1);  //// using the index of the new noise symbols created above /////////////////
+
+    //t1p_aff_build (prbx1, tpmeet->paf[0], ptitv_meet[0][j], j);  //////////// creating new noise symbols but indexed from j= to size ///////////////// 
+  }
+
+  /*t1p_aaterm_t *p3 = NULL;
+     p3=a1->paf[1]->q;
+     /*t1p_aaterm_t *p4 = NULL;
+     p4=a2->paf[1]->q; */
+
+  //for (j = 0; j < size; j++) {
+  //t1p_aff_build (prbx1, tpmeet->paf[1], ptitv_meet[1][j], j);
+  /*if (j >= size1){
+     if (p4 !=NULL){
+     t1p_aff_build (prbx1, tpmeet->paf[1], ptitv_meet[1][j], p4->pnsym->index);
+     printf("%u", p4->pnsym->index);
+     p4=p4->n;}}
+     else {
+     if (p3 !=NULL){
+     t1p_aff_build (prbx1, tpmeet->paf[1], ptitv_meet[1][j], p3->pnsym->index);
+     printf("%u", p3->pnsym->index);
+     p3=p3->n;}} */
+  //}
+
+  //printf ("%u", prbx1->dim);
+
+  itv_t a1_centre1_paf0;
+  itv_init (a1_centre1_paf0);
+  itv_t a1_centre2_paf1;
+  itv_init (a1_centre2_paf1);
+  itv_t a2_centre1_paf0;
+  itv_init (a2_centre1_paf0);
+  itv_t a2_centre2_paf1;
+  itv_init (a2_centre2_paf1);
+
+  itv_mul_num (a1_centre1_paf0, a1->paf[0]->c, num2);
+  itv_mul_num (a1_centre2_paf1, a1->paf[1]->c, num2);
+  itv_mul_num (a2_centre1_paf0, a2->paf[0]->c, num4);
+  itv_mul_num (a2_centre2_paf1, a2->paf[1]->c, num4);
+  itv_add (tpmeet->paf[0]->c, a1_centre1_paf0, a2_centre1_paf0);
+  itv_add (tpmeet->paf[1]->c, a1_centre2_paf1, a2_centre2_paf1);
+
+  /* update tpmeet->box */  
+  for (i=0; i<tpmeet->dims; i++){ 
+      //itv_meet(prbx1->itv, tpmeet->box[i], a1->box[i], a2->box[i]);
+      t1p_aff_boxize (prbx1, tpmeet->box[i], tpmeet->paf[i], tpmeet);
+      itv_set(tpmeet->paf[i]->itv, tpmeet->box[i]);
+      tpmeet->paf[i]->pby++;}
+
+  //scanf("%f",&b);
+  //itv_print(tpmeet->paf[1]->end->coeff);
+  //printf("%u", tpmeet->paf[1]->end->pnsym->index);
+  //scanf("%f",&b);
+//itv_print(tpmeet->paf[0]->q->n->coeff);
+//itv_print(tpmeet->paf[0]->q->n->n->coeff);
+//itv_print(tpmeet->paf[0]->end->coeff);
+//printf("%u", tpmeet->paf[0]->end->pnsym->index);
+//itv_print(tpmeet->paf[1]->q->coeff);
+//printf("%u", tpmeet->paf[1]->q->pnsym->index);
+//itv_print(tpmeet->paf[1]->q->n->coeff);
+//itv_print(tpmeet->paf[1]->q->n->n->coeff);
+//itv_print(tpmeet->paf[1]->end->coeff);
+//printf("%u", tpmeet->paf[1]->end->pnsym->index);
+
+  //itv_print (a1->paf[0]->q->coeff);
+
+  /*free (ptitv1);
+  free (ptitv2);
+  free (ptitv3);
+  free (ptitv4);*/
+  free (ptitv_meet);
+  
+  /*#ifdef _T1P_DEBUG
+    fprintf(stdout, "### RESULT of MEET ###\n");
+    t1p_fprint(stdout, man, tpmeet, 0x0);
+    fprintf(stdout, "### ### ###\n");
+  #endif*/
+
+  return tpmeet;
+
+}
+

@@ -1,0 +1,688 @@
+
+#include <time.h>
+#include <stdlib.h>
+#include <limits.h>
+#include "ap_global1.h"
+
+#include "num.h"
+#include "itv.h"
+#include "t1p_internal.h"
+#include "t1p_fun.h"
+#include "t1p_constructor.h"
+#include "t1p_representation.h"
+#include "tilings.h"
+#include "stack.h"
+
+#include "ap_manager.h"
+
+typedef struct
+{
+  int n;
+  ap_abstract0_t **abs;
+} ap_abstract0_array_t;
+
+ap_abstract0_array_t
+t1p_tilings (ap_manager_t * man, ap_abstract0_t * env1)
+{
+  t1p_t *env = (t1p_t *) (env1->value);
+
+  //a.abs[i] = ...;
+  //t1p_t* a = (t1p_t*) (a.abs[i]->value);
+  //return s;
+
+//void t1p_tilings(ap_manager_t* man, t1p_t* env, t1p_t* tiles[10])
+//{
+
+  //t1p_internal_t * pr1 = t1p_init_from_manager(man, AP_FUNID_UNKNOWN);
+
+  /*int b;
+  scanf("%f",&b);*/
+
+  t1p_internal_t *pr1 = (t1p_internal_t *) man->internal;
+  int size, i, j, k, p, q1;
+
+  //t1p_aff_update(pr1, env);
+
+///////// generator matrix ///////////////////
+
+  itv_t **ptitv1 = (itv_t **) calloc (env->dims, sizeof (itv_t *));
+  for (i = 0; i < env->dims; i++)
+    ptitv1[i] = (itv_t *) calloc (pr1->dim, sizeof (itv_t));
+
+  //size = t1p_aff_get_generator_matrix_size (pr1, env, ptitv1);
+
+/*for (i=0;i<env->dims;i++){
+   for (j=0;j<pr1->dim;j++){
+       itv_init(ptitv1[i][j]);//=coeff1;
+       //itv_print(ptitv[i][j]);
+     }
+}*/
+
+//itv_print(ptitv[0][0]);
+
+t1p_aaterm_t *p3 = NULL;
+
+int* vec= (int* )calloc(pr1->dim,sizeof(int));
+
+for (i=0;i<pr1->dim;i++){
+vec[i]=-1;
+}
+
+k=0;
+
+for(i=0;i<env->dims;i++) {
+ for(p3=env->paf[i]->q;p3;p3=p3->n) {
+		//itv_init(ptitv1[i][p3->pnsym->index]);
+		itv_set(ptitv1[i][p3->pnsym->index],p3->coeff);
+                //itv_print(ptitv[i][p->pnsym->index]);
+                if (vec[p3->pnsym->index]==-1){
+                   vec[p3->pnsym->index]=k;
+                   k++;}
+   }
+}
+
+size=k;
+
+//printf("%u", size1);
+
+  itv_t **ptitv2 = (itv_t **) calloc (env->dims, sizeof (itv_t *));
+  for (i = 0; i < env->dims; i++)
+    ptitv2[i] = (itv_t *) calloc (size, sizeof (itv_t));
+
+  t1p_aff_get_generator_matrix (pr1, env, ptitv1, ptitv2);
+
+/*for (i=0;i<env->dims;i++){
+   for (j=0;j<k;j++){
+       itv_init(ptitv2[i][j]);//=coeff1;
+       //itv_print(ptitv[i][j]);
+     }
+}*/
+
+t1p_aaterm_t *p1 = NULL;
+
+for(i=0;i<env->dims;i++) {
+ for(p1=env->paf[i]->q;p1;p1=p1->n) {
+		//itv_init(ptitv2[i][vec[p1->pnsym->index]]);
+		itv_set(ptitv2[i][vec[p1->pnsym->index]],p1->coeff);
+                //itv_print(ptitv1[i][p1->pnsym->index]);
+                  
+	   }
+}
+
+  itv_t coeff;
+  itv_init (coeff);
+  num_t num;
+  num_init (num);
+
+  itv_t coeffchck;
+  itv_init (coeffchck);
+  num_t numchck;
+  num_init (numchck);
+  num_set_double (numchck, 0);
+  itv_set_num (coeffchck, numchck);
+
+  struct zonotope zon;
+  zon.row = 2;
+  zon.column = size;
+  zon.totnocols = size;
+  zon.nbtiles = 0;
+  zon.mat = (double **) calloc (zon.row, sizeof (double *));
+  for (i = 0; i < zon.row; i++)
+    zon.mat[i] = (double *) calloc (2 * zon.column, sizeof (double));
+  zon.center = (double *) calloc (zon.row, sizeof (double));
+
+  itv_magnitude (num, env->paf[0]->c);
+  double_set_num (&zon.center[0], num);
+  itv_magnitude (num, env->paf[1]->c);
+  double_set_num (&zon.center[1], num);
+  if (itv_is_neg (env->paf[0]->c) == 1)
+      zon.center[0] = -1 * zon.center[0];
+  if (itv_is_neg (env->paf[1]->c) == 1)
+      zon.center[1] = -1 * zon.center[1];
+
+  for (j = 0; j < size; j++) {
+    itv_magnitude (num, ptitv2[0][j]);
+    double_set_num (&zon.mat[0][j], num);
+    itv_magnitude (num, ptitv2[1][j]);
+    double_set_num (&zon.mat[1][j], num);
+    if (itv_is_neg (ptitv2[0][j]) == 1)
+      zon.mat[0][j] = -1 * zon.mat[0][j];
+    if (itv_is_neg (ptitv2[1][j]) == 1)
+      zon.mat[1][j] = -1 * zon.mat[1][j];
+  }
+  /*for(i=0;i<zon.row;i++){
+    for(j=0;j<zon.column;j++){
+        printf("%f \t",zon.mat[i][j]);}
+
+    printf("\n");}
+    scanf("%f",&b);*/
+  /* splitting a parallelotope*/
+  if (zon.column == 2) {
+
+    struct zonotope tilings[2];
+
+    tilings[0].row = 2;
+    tilings[0].column = 2;
+
+    tilings[0].mat = (double **) calloc (tilings[0].row, sizeof (double *));
+    for (i = 0; i < tilings[0].row; i++)
+      tilings[0].mat[i] = (double *) calloc (tilings[0].column, sizeof (double));
+    tilings[0].center = (double *) calloc (tilings[0].row, sizeof (double));
+
+// center for first splitted zonotope
+
+    double norm[2];
+    int id;
+
+    norm[0] = zon.mat[0][0] * zon.mat[0][0] + zon.mat[1][0] * zon.mat[1][0];
+    norm[1] = zon.mat[0][1] * zon.mat[0][1] + zon.mat[1][1] * zon.mat[1][1];
+
+    norm[0] = sqrt (norm[0]);
+    norm[1] = sqrt (norm[1]);
+
+    if (norm[0] > norm[1])
+      id = 0;
+    else
+      id = 1;
+
+    tilings[0].center[0] = zon.center[0] - (zon.mat[0][id]) / 2;
+    tilings[0].center[1] = zon.center[1] - (zon.mat[1][id]) / 2;
+    //printf("%f \t", p2[n].center[k]);}
+
+// generator for first splitted zonotope
+    if (id == 0)
+      tilings[0].mat[0][0] = zon.mat[0][0] / 2;
+    else
+      tilings[0].mat[0][0] = zon.mat[0][0];
+    if (id == 1)
+      tilings[0].mat[0][1] = zon.mat[0][1] / 2;
+    else
+      tilings[0].mat[0][1] = zon.mat[0][1];
+    if (id == 0)
+      tilings[0].mat[1][0] = zon.mat[1][0] / 2;
+    else
+      tilings[0].mat[1][0] = zon.mat[1][0];
+    if (id == 1)
+      tilings[0].mat[1][1] = zon.mat[1][1] / 2;
+    else
+      tilings[0].mat[1][1] = zon.mat[1][1];
+
+    tilings[1].row = 2;
+    tilings[1].column = 2;
+
+    tilings[1].mat = (double **) calloc (tilings[1].row, sizeof (double *));
+    for (i = 0; i < tilings[1].row; i++)
+      tilings[1].mat[i] = (double *) calloc (tilings[1].column, sizeof (double));
+    tilings[1].center = (double *) calloc (tilings[1].row, sizeof (double));
+
+// center for second splitted zonotope
+
+    tilings[1].center[0] = zon.center[0] + (zon.mat[0][id]) / 2;
+    tilings[1].center[1] = zon.center[1] + (zon.mat[1][id]) / 2;
+    //printf("%f \t", p2[n].center[k]);}
+
+// generator for second splitted zonotope
+
+    tilings[1].mat[0][0] = tilings[0].mat[0][0];
+    tilings[1].mat[0][1] = tilings[0].mat[0][1];
+    tilings[1].mat[1][0] = tilings[0].mat[1][0];
+    tilings[1].mat[1][1] = tilings[0].mat[1][1];
+
+    tilings[0].nbtiles = 2;
+
+    ap_abstract0_array_t s;
+    s.n = 2;
+    s.abs = (ap_abstract0_t **) calloc (2, sizeof (ap_abstract0_t *));
+
+    for (i = 0; i < tilings[0].nbtiles; i++) {
+      t1p_t *tiles0 = t1p_alloc (man, 0, 2);
+      tiles0->paf[0] = t1p_aff_alloc_init (pr1);
+      num_set_double (num, tilings[i].center[0]);
+      itv_set_num (coeff, num);
+      itv_set (tiles0->paf[0]->c, coeff);
+      num_set_double (num, tilings[i].mat[0][0]);
+      itv_set_num (coeff, num);
+      t1p_nsym_t *symb1 = t1p_nsym_add (pr1, UN);
+      t1p_aff_nsym_add (pr1, tiles0->paf[0], coeff, symb1);
+      tiles0->paf[1] = t1p_aff_alloc_init (pr1);
+      num_set_double (num, tilings[i].center[1]);
+      itv_set_num (coeff, num);
+      itv_set (tiles0->paf[1]->c, coeff);
+      num_set_double (num, tilings[i].mat[1][0]);
+      itv_set_num (coeff, num);
+      if (itv_is_eq (coeff, coeffchck) == 0) {
+	t1p_aff_build (pr1, tiles0->paf[1], coeff, pr1->dim - 1);
+      }
+      num_set_double (num, tilings[i].mat[0][1]);
+      itv_set_num (coeff, num);
+      t1p_nsym_t *symb2 = t1p_nsym_add (pr1, UN);
+      t1p_aff_nsym_add (pr1, tiles0->paf[0], coeff, symb2);
+      num_set_double (num, tilings[i].mat[1][1]);
+      itv_set_num (coeff, num);
+      if (itv_is_eq (coeff, coeffchck) == 0) {
+	t1p_aff_build (pr1, tiles0->paf[1], coeff, pr1->dim - 1);
+      }
+
+      /* update tiles0->box */
+      for (j = 0; j < tiles0->dims; j++) {
+	t1p_aff_boxize (pr1, tiles0->paf[j]->itv, tiles0->paf[j], tiles0);
+	itv_set (tiles0->box[j], tiles0->paf[j]->itv);
+	tiles0->paf[j]->pby++;
+      }
+      s.abs[i] = ap_abstract0_cons (man, tiles0);
+    }				/// end of the for loop
+
+    free(zon.center);
+    free(tilings[0].center);
+    free(tilings[1].center);    
+
+    itv_clear (coeff);
+    itv_clear (coeffchck);
+    num_clear (num);
+    num_clear (numchck);
+
+      for (i = 0; i < env->dims; i++) {
+    for (j = 0; j < pr1->dim; j++) {
+      itv_clear (ptitv1[i][j]);}}
+       for (i = 0; i < env->dims; i++) {
+          free(ptitv1[i]);}
+       free(ptitv1);
+      //free (ptitv2);
+      for (i = 0; i < env->dims; i++) {
+    for (j = 0; j < size; j++) {
+      itv_clear (ptitv2[i][j]);}}
+      for (i = 0; i < env->dims; i++) {
+          free(ptitv2[i]);}
+      free(ptitv2);
+    for (i = 0; i < zon.row; i++){
+        free(zon.mat[i]);}
+    free(zon.mat);
+
+    for (i = 0; i < tilings[0].row; i++){
+      free(tilings[0].mat[i]);
+      free(tilings[1].mat[i]);}
+    free(tilings[0].mat);
+        free(tilings[1].mat);
+
+    /*for (i = 0; i < tilings[0].row; i++){
+      free(tilings[1].mat[i]);}
+    free(tilings[1].mat);*/
+
+    return s;
+
+  }				//// end of the if condition 
+
+  else {			/// tiling ////
+
+    //size=3;
+    ap_abstract0_array_t s;
+    s.n = (size * (size - 1)) / 2;
+    s.abs = (ap_abstract0_t **) calloc ((size * (size - 1)) / 2, sizeof (ap_abstract0_t *));	/* (size * (size - 1)) / 2 is the no. of tiles */
+
+    /* for filter example */
+    /*zon.mat[0][0]=zon.mat[0][0]-zon.mat[0][2]+zon.mat[0][3];
+    zon.mat[1][0]=zon.mat[1][0]+zon.mat[1][2]+zon.mat[1][3];
+
+    zon.mat[0][2]=zon.mat[0][4];
+    zon.mat[1][2]=zon.mat[1][4];
+
+    zon.column=3;*/
+
+    /*for(i=0;i<zon.row;i++){
+    for(j=0;j<zon.column;j++){
+        printf("%f \t",zon.mat[i][j]);}
+
+    printf("\n");}
+    scanf("%f",&b);*/
+
+    int **sgns = (int **) calloc (2 * zon.column, sizeof (int *));
+    for (i = 0; i < 2 * zon.column; i++)
+      sgns[i] = (int *) calloc (zon.column, sizeof (int));
+
+    int **sgnsold = (int **) calloc (2 * zon.column, sizeof (int *));
+    for (i = 0; i < 2 * zon.column; i++)
+      sgnsold[i] = (int *) calloc (zon.column, sizeof (int));
+
+    double **negmat = (double **) calloc (2 * zon.column, sizeof (double *));
+    for (i = 0; i < 2 * zon.column; i++)
+      negmat[i] = (double *) calloc (zon.column, sizeof (double));
+
+    int **subs = (int **) calloc (2 * zon.column, sizeof (int *));
+    for (i = 0; i < 2 * zon.column; i++)
+      subs[i] = (int *) calloc (zon.column, sizeof (int));
+
+    int *e = (int *) calloc (zon.column, sizeof (int));
+
+    double **transpose = (double **) calloc (2 * zon.column, sizeof (double *));/* here the rows and columns are assigned to size 2*zon.column just to have enough space to accomodate the transpose */
+    for (i = 0; i < 2 * zon.column; i++)
+      transpose[i] = (double *) calloc (2 * zon.column, sizeof (double));
+
+    double **transposeproj = (double **) calloc (2 * zon.column, sizeof (double *));
+    for (i = 0; i < 2 * zon.column; i++)
+      transposeproj[i] = (double *) calloc (2 * zon.column, sizeof (double));
+
+    double **transposeprojpick =
+      (double **) calloc (2 * zon.column, sizeof (double *));
+    for (i = 0; i < 2 * zon.column; i++)
+      transposeprojpick[i] = (double *) calloc (2 * zon.column, sizeof (double));
+
+    double *cs = (double *) calloc (2, sizeof (double));
+
+    double *firstat = (double *) calloc (zon.row, sizeof (double));
+
+    int *note = (int *) calloc (zon.column, sizeof (int));
+
+    double **transposepick = (double **) calloc (2 * zon.column, sizeof (double *));
+    for (i = 0; i < 2 * zon.column; i++)
+      transposepick[i] = (double *) calloc (2 * zon.column, sizeof (double));
+
+    struct zonotope tile;
+    tile.row = 2;
+    tile.column = 2;
+    tile.totnocols = 2;
+    tile.nbtiles = 0;
+
+    tile.mat = (double **) calloc (tile.row, sizeof (double *));
+    for (i = 0; i < tile.row; i++)
+      tile.mat[i] = (double *) calloc (tile.column, sizeof (double));
+    tile.center = (double *) calloc (tile.row, sizeof (double));
+
+    while (zon.column != 2) {
+
+      horzcat (&zon, negmat);
+
+      signsvecnew (&zon, sgns);
+
+      int lensubs = 0;
+
+      for (i = 0; i < 2 * zon.column; i++) {
+	if (sgns[i][0] == -1) {
+	  lensubs++;
+	  for (j = 0; j < zon.column; j++) {
+	    if (i == lensubs - 1)
+	      subs[i][j] = sgns[i][j];
+	    else
+	      subs[lensubs - 1][j] = sgns[i][j];
+	  }
+	}
+      }
+
+      for (p = 0; p < lensubs; p++) {
+	for (q1 = p + 1; q1 < lensubs; q1++) {
+	  for (i = 0; i < zon.column; i++) {
+	    if (subs[p][i] == subs[q1][i])
+	      e[i] = 1;
+	    else
+	      e[i] = 0;
+	  }
+	  int sum = 0;
+	  for (i = 0; i < zon.column; i++) {
+	    if (e[i] == 0)
+	      sum++;
+	  }
+	  if (sum == 1) {
+	    for (i = 0; i < zon.row; i++) {
+	      for (j = 0; j < zon.column; j++) {
+		transpose[j][i] = zon.mat[i][j];
+	      }
+	    }
+	    for (i = 0; i < zon.column; i++) {
+	      for (j = 0; j < zon.row; j++) {
+		transposeproj[i][j] = transpose[i][j];
+	      }
+	    }
+	    for (i = 0; i < zon.column; i++) {
+	      for (j = 0; j < zon.row; j++) {
+		transposeproj[i][j] = transpose[i][j] * subs[p][i];
+	      }
+	    }
+	    for (j = 0; j < zon.row; j++) {
+	      sum = 0;
+	      for (i = 0; i < zon.column; i++) {
+		if (e[i] == 1) {
+		  sum++;
+		  if (i == sum - 1) {
+		    transposeprojpick[i][j] = transposeproj[i][j];
+		  }
+		  else
+		    transposeprojpick[sum - 1][j] = transposeproj[i][j];
+		}
+	      }
+	    }
+	    for (i = 0; i < sum - 1; i++) {
+	      for (j = 0; j < zon.row; j++) {
+		transposeprojpick[i][j] = transposeprojpick[i + 1][j];
+	      }
+	    }
+	    for (i = 1; i < sum - 1; i++) {
+	      for (j = 0; j < zon.row; j++) {
+		transposeprojpick[0][j] += transposeprojpick[i][j];
+	      }
+	    }
+	    for (i = 0; i < zon.row; i++) {
+	      cs[i] = zon.center[i] + transposeprojpick[0][i];
+	    }
+	    for (i = 0; i < zon.row; i++) {
+	      firstat[i] = transpose[0][i];
+	    }
+	    for (i = 0; i < zon.column; i++) {
+	      if (e[i] == 0)
+		note[i] = 1;
+	      else
+		note[i] = 0;
+	    }
+	    for (j = 0; j < zon.row; j++) {
+	      sum = 0;
+	      for (i = 0; i < zon.column; i++) {
+		if (note[i] == 1) {
+		  sum++;
+		  if (i == sum - 1) {
+		    transposepick[i][j] = transpose[i][j];
+		  }
+		  else
+		    transposepick[sum - 1][j] = transpose[i][j];
+		}
+	      }
+	    }
+	    for (i = 0; i < tile.row; i++) {
+	      tile.center[i] = cs[i];
+	    }
+	    tile.mat[0][0] = transposepick[0][0];
+	    tile.mat[1][0] = transposepick[0][1];
+	    tile.mat[0][1] = firstat[0];
+	    tile.mat[1][1] = firstat[1];
+	    /*for (i = 0; i < tile.row; i++) {
+	       for (j = 0; j < tile.column; j++) {
+	       printf ("%f", tile.mat[i][j]);
+	       }
+	       printf ("\n");
+	       }*/ 
+	    tile.nbtiles++;
+
+	    t1p_t *tiles0 = t1p_alloc (man, 0, 2);
+	    tiles0->paf[0] = t1p_aff_alloc_init (pr1);
+	    num_set_double (num, tile.center[0]);
+	    itv_set_num (coeff, num);
+	    itv_set (tiles0->paf[0]->c, coeff);
+	    num_set_double (num, tile.mat[0][0]);
+	    itv_set_num (coeff, num);
+	    t1p_nsym_t *symb1 = t1p_nsym_add (pr1, UN);
+	    t1p_aff_nsym_add (pr1, tiles0->paf[0], coeff, symb1);
+	    tiles0->paf[1] = t1p_aff_alloc_init (pr1);
+	    num_set_double (num, tile.center[1]);
+	    itv_set_num (coeff, num);
+	    itv_set (tiles0->paf[1]->c, coeff);
+	    num_set_double (num, tile.mat[1][0]);
+	    itv_set_num (coeff, num);
+	    if (itv_is_eq (coeff, coeffchck) == 0) {
+	      t1p_aff_build (pr1, tiles0->paf[1], coeff, pr1->dim - 1);
+	    }
+	    num_set_double (num, tile.mat[0][1]);
+	    itv_set_num (coeff, num);
+	    t1p_nsym_t *symb2 = t1p_nsym_add (pr1, UN);
+	    t1p_aff_nsym_add (pr1, tiles0->paf[0], coeff, symb2);
+	    num_set_double (num, tile.mat[1][1]);
+	    itv_set_num (coeff, num);
+	    if (itv_is_eq (coeff, coeffchck) == 0) {
+	      t1p_aff_build (pr1, tiles0->paf[1], coeff, pr1->dim - 1);
+	    }
+
+	    /* update tiles0->box */
+	    for (j = 0; j < tiles0->dims; j++) {
+	      t1p_aff_boxize (pr1, tiles0->paf[j]->itv, tiles0->paf[j], tiles0);
+	      itv_set (tiles0->box[j], tiles0->paf[j]->itv);
+	      tiles0->paf[j]->pby++;
+	    }
+
+	    s.abs[tile.nbtiles - 1] = ap_abstract0_cons (man, tiles0);
+
+	  }			// end of if (sum==1)
+
+	}			// end of for (q1=p+1;q1<ds;q1++){
+      }				// end of for (p=0;p<ds;p++){
+
+      zon.center[0] = zon.center[0] + zon.mat[0][0];
+      zon.center[1] = zon.center[1] + zon.mat[1][0];
+
+      for (i = 0; i < zon.row; i++) {
+	for (j = 0; j < zon.column; j++) {
+	  zon.mat[i][j] = zon.mat[i][j + 1];
+	}
+      }
+      zon.column = zon.column - 1;
+      /* last tiling */
+      if (zon.column == 2) {
+	tile.nbtiles++;
+	for (i = 0; i < tile.row; i++) {
+	  tile.center[i] = zon.center[i];
+	  //printf ("%f", tile.center[i]);
+	}
+	tile.mat[0][0] = zon.mat[0][0];
+	tile.mat[1][0] = zon.mat[1][0];
+	tile.mat[0][1] = zon.mat[0][1];
+	tile.mat[1][1] = zon.mat[1][1];
+	/*for (i = 0; i < tile.row; i++) {
+	   for (j = 0; j < tile.column; j++) {
+	   printf ("%f", tile.mat[i][j]);
+	   }
+	   printf ("\n");
+	   }*/ 
+
+	t1p_t *tiles0 = t1p_alloc (man, 0, 2);
+	tiles0->paf[0] = t1p_aff_alloc_init (pr1);
+	num_set_double (num, tile.center[0]);
+	itv_set_num (coeff, num);
+	itv_set (tiles0->paf[0]->c, coeff);
+	num_set_double (num, tile.mat[0][0]);
+	itv_set_num (coeff, num);
+	t1p_nsym_t *symb1 = t1p_nsym_add (pr1, UN);
+	t1p_aff_nsym_add (pr1, tiles0->paf[0], coeff, symb1);
+	tiles0->paf[1] = t1p_aff_alloc_init (pr1);
+	num_set_double (num, tile.center[1]);
+	itv_set_num (coeff, num);
+	itv_set (tiles0->paf[1]->c, coeff);
+	num_set_double (num, tile.mat[1][0]);
+	itv_set_num (coeff, num);
+	if (itv_is_eq (coeff, coeffchck) == 0) {
+	  t1p_aff_build (pr1, tiles0->paf[1], coeff, pr1->dim - 1);
+	}
+	num_set_double (num, tile.mat[0][1]);
+	itv_set_num (coeff, num);
+	t1p_nsym_t *symb2 = t1p_nsym_add (pr1, UN);
+	t1p_aff_nsym_add (pr1, tiles0->paf[0], coeff, symb2);
+	num_set_double (num, tile.mat[1][1]);
+	itv_set_num (coeff, num);
+	if (itv_is_eq (coeff, coeffchck) == 0) {
+	  t1p_aff_build (pr1, tiles0->paf[1], coeff, pr1->dim - 1);
+	}
+
+	/* update tiles0->box */
+	for (j = 0; j < tiles0->dims; j++) {
+	  t1p_aff_boxize (pr1, tiles0->paf[j]->itv, tiles0->paf[j], tiles0);
+	  itv_set (tiles0->box[j], tiles0->paf[j]->itv);
+	  tiles0->paf[j]->pby++;
+	}
+	s.abs[tile.nbtiles - 1] = ap_abstract0_cons (man, tiles0);
+      }				// end of the if loop if (zon.column == 2) {
+
+    }				// end of while loop
+   
+    for (i = 0; i < 2 * zon.totnocols; i++){
+      free(sgns[i]);
+      free(sgnsold[i]);
+      free(negmat[i]);
+      free(subs[i]);
+      free(transpose[i]);
+      free(transposeproj[i]);
+      free(transposeprojpick[i]);
+      free(transposepick[i]);}
+    free(sgns);
+    free(sgnsold);
+    free(negmat);
+    free(subs);
+    free(e);
+    free(transpose);
+    free(transposeproj);
+        free(transposeprojpick);
+         free(transposepick);
+    /*for (i = 0; i < 2 * zon.totnocols; i++){
+      free(sgnsold[i]);}
+    free(sgnsold);
+    for (i = 0; i < 2 * zon.totnocols; i++){
+      free(negmat[i]);}
+    free(negmat);
+    for (i = 0; i < 2 * zon.totnocols; i++){
+      free(subs[i]);}
+    free(subs);
+    free(e);
+    for (i = 0; i < 2 * zon.totnocols; i++){
+      free(transpose[i]);}
+    free(transpose);
+    for (i = 0; i < 2 * zon.totnocols; i++){
+      free(transposeproj[i]);}
+    free(transposeproj);
+    for (i = 0; i < 2 * zon.totnocols; i++){
+      free(transposeprojpick[i]);}
+    free(transposeprojpick);*/
+    free(cs);
+    free(firstat);
+    free(note);
+    /*for (i = 0; i < 2 * zon.totnocols; i++){
+      free(transposepick[i]);}
+    free(transposepick);*/
+    //free(zon.mat);
+    free(zon.center);
+    //free(tile.mat);
+    free(tile.center);
+
+    itv_clear (coeff);
+    itv_clear (coeffchck);
+    num_clear (num);
+    num_clear (numchck);
+
+    for (i = 0; i < env->dims; i++) {
+    for (j = 0; j < pr1->dim; j++) {
+      itv_clear (ptitv1[i][j]);}}
+       for (i = 0; i < env->dims; i++) {
+          free(ptitv1[i]);}
+       free(ptitv1);
+      for (i = 0; i < env->dims; i++) {
+    for (j = 0; j < size; j++) {
+      itv_clear (ptitv2[i][j]);}}
+      for (i = 0; i < env->dims; i++) {
+          free(ptitv2[i]);}
+      free(ptitv2);
+
+    for (i = 0; i < zon.row; i++){
+        free(zon.mat[i]);}
+    free(zon.mat);
+
+    for (i = 0; i < tile.row; i++){
+      free(tile.mat[i]);}
+    free(tile.mat);
+
+    return s;
+
+  }				//// end of the else condition 
+
+}

@@ -1,0 +1,589 @@
+t1p_t* t1p_meet(ap_manager_t* man, bool destructive, t1p_t* a1, t1p_t* a2)
+/* TODO: destructive not used */
+{
+    CALL();
+    t1p_internal_t* pr = t1p_init_from_manager(man,AP_FUNID_MEET);
+    arg_assert(a1->dims==a2->dims && a1->intdim==a2->intdim,abort(););
+#ifdef _T1P_DEBUG
+    fprintf(stdout, "### MEET OPERANDS (destructive %d)###\n",destructive);
+    t1p_fprint(stdout, man, a1, 0x0);
+    t1p_fprint(stdout, man, a2, 0x0);
+    fprintf(stdout, "### ### ###\n");
+#endif
+    t1p_t* res = NULL;
+    size_t i = 0;
+    size_t realdim = a1->dims - a1->intdim;
+    size_t intdim = a1->intdim;
+    man->result.flag_best = tbool_true;
+    man->result.flag_exact = tbool_true;
+    if (t1p_is_eq(man, a1, a2)) res = t1p_copy(man, a1);
+    else if (tbool_or(t1p_is_bottom(man, a1), t1p_is_bottom(man, a2)) == tbool_true) {
+	res = t1p_bottom(man, intdim, realdim);
+    } else if (t1p_is_top(man, a1) == tbool_true) {
+	res = t1p_copy(man, a2);
+    } else if (t1p_is_top(man, a2) == tbool_true) {
+	res = t1p_copy(man, a1);
+    } else {
+	res = t1p_alloc(man, intdim, realdim);
+	//ap_abstract0_free(pr->manNS, res->abs);
+	size_t k = 0;
+	ap_dim_t j = 0;
+	size_t dims1 = t1p_nsymcons_get_dimension(pr, a1);
+	size_t dims2 = t1p_nsymcons_get_dimension(pr, a2);
+	if (dims1 && dims2) {
+	    size_t dim2 = 0;
+	    /* au pire il y a toute la liste de l'un a rajouter dans l'autre */
+	    ap_dimchange_t* dimchange2 = ap_dimchange_alloc(0, dims2);
+		if (dims1 > res->size) {
+		    res->nsymcons = (ap_dim_t*)realloc(res->nsymcons, (dims1)*sizeof(ap_dim_t));
+		    res->gamma = (ap_interval_t**)realloc(res->gamma, (dims1)*sizeof(ap_interval_t*));
+		    for (k=res->size;k<dims1;k++) res->gamma[k] = NULL;
+		    res->size = dims1;
+		}
+	    res->nsymcons = memcpy((void *)res->nsymcons, (const void *)a1->nsymcons, dims1*sizeof(ap_dim_t));
+	    for (i=0; i<dims1; i++) res->gamma[i] = ap_interval_alloc_set(a1->gamma[i]);
+	    ap_abstract0_free(pr->manNS, res->abs);
+	    res->abs = ap_abstract0_copy(pr->manNS, a1->abs);
+	    for (k=0; k<dims1; k++) {
+		if (!t1p_nsymcons_get_dimpos(pr, &j, a1->nsymcons[k], a2)) {
+		    dimchange2->dim[dim2] = j;
+		    dim2++;
+		}
+	    }
+	    dimchange2->realdim = dim2;
+	    size_t dim1 = 0;
+	    for (k=0; k<dims2; k++) t1p_insert_constrained_nsym(pr, &j, a2->nsymcons[k], res);
+
+	    /* destructive, without projection (new dimension set to top) */
+	    ap_abstract0_add_dimensions(pr->manNS, true, a2->abs, dimchange2, false);
+
+	    ap_abstract0_meet(pr->manNS, true, res->abs, a2->abs);
+
+	    /* update res->gamma */
+	    t1p_update_nsymcons_gamma(pr, res);
+
+	    ap_dimchange_add_invert(dimchange2);
+	    ap_abstract0_remove_dimensions(pr->manNS, true, a2->abs, dimchange2);
+
+	    dimchange2->realdim = dims2; ap_dimchange_free(dimchange2);
+	} else if (dims1) {
+		if (dims1 > res->size) {
+		    res->nsymcons = (ap_dim_t*)realloc(res->nsymcons, (dims1)*sizeof(ap_dim_t));
+		    res->gamma = (ap_interval_t**)realloc(res->gamma, (dims1)*sizeof(ap_interval_t*));
+		    for (k=res->size;k<dims1;k++) res->gamma[k] = NULL;
+		    res->size = dims1;
+		}
+	    res->nsymcons = memcpy((void *)res->nsymcons, (const void *)a1->nsymcons, dims1*sizeof(ap_dim_t));
+	    for (i=0; i<dims1; i++) res->gamma[i] = ap_interval_alloc_set(a1->gamma[i]);
+	    res->abs = ap_abstract0_copy(pr->manNS, a1->abs);
+	} else if (dims2) {
+		if (dims2 > res->size) {
+		    res->nsymcons = (ap_dim_t*)realloc(res->nsymcons, (dims2)*sizeof(ap_dim_t));
+		    res->gamma = (ap_interval_t**)realloc(res->gamma, (dims2)*sizeof(ap_interval_t*));
+		    for (k=res->size;k<dims2;k++) res->gamma[k] = NULL;
+		    res->size = dims2;
+		}
+	    res->nsymcons = memcpy((void *)res->nsymcons, (const void *)a2->nsymcons, dims2*sizeof(ap_dim_t));
+	    for (i=0; i<dims2; i++) res->gamma[i] = ap_interval_alloc_set(a2->gamma[i]);
+	    res->abs = ap_abstract0_copy(pr->manNS, a2->abs);
+	} else {
+	    /* non constrained abstract objects */
+	}
+
+	//res->abs = ap_abstract0_meet(pr->manNS, false, a1->abs, a2->abs);
+	/* update res->gamma */
+	//t1p_update_nsymcons_gamma(pr, res);
+	itv_t tmp; itv_init(tmp);
+	for (i=0; i<intdim+realdim; i++) {
+	    /* update res->box */
+	    itv_meet(pr->itv, res->box[i], a1->box[i], a2->box[i]);
+	    if ((a1->paf[i]->q == NULL) && (a2->paf[i]->q == NULL)) {
+		itv_meet(pr->itv, tmp, a1->paf[i]->c, a2->paf[i]->c);
+		if (itv_is_bottom(pr->itv, tmp)) {
+		    t1p_free(man, res);
+		    res = t1p_bottom(man, intdim, realdim);
+		    break;
+		} else if (itv_is_top(tmp)) res->paf[i] = pr->top;
+		else if (itv_has_finite_bound(tmp)) {
+		    res->paf[i] = t1p_aff_alloc_init(pr);
+		    t1p_aff_add_itv(pr, res->paf[i], tmp, IN);
+		} else {
+		    res->paf[i] = t1p_aff_alloc_init(pr);
+		    itv_set(res->paf[i]->c, tmp);
+		}
+		res->paf[i]->pby++;
+	    } else if (t1p_aff_is_eq(pr, a1->paf[i], a2->paf[i])) {
+		res->paf[i] = a1->paf[i];
+		res->paf[i]->pby++;
+	    } else if (itv_is_point(pr->itv, res->box[i])) {
+		res->paf[i] = t1p_aff_alloc_init(pr);
+		itv_set(res->paf[i]->c, res->box[i]);
+	    } else {
+		fprintf(stdout, "destructive ? %d\n",destructive);
+		t1p_fprint(stdout, man, a1, 0x0);
+		t1p_fprint(stdout, man, a2, 0x0);
+		//not_implemented();
+		/* return a top instead */
+		res->paf[i] = pr->top;
+		res->paf[i]->pby++;
+		itv_set_top(res->box[i]);
+	    }
+	}
+	itv_clear(tmp);
+    }
+#ifdef _T1P_DEBUG
+    fprintf(stdout, "### RESULT of MEET ###\n");
+    t1p_fprint(stdout, man, res, 0x0);
+    fprintf(stdout, "### ### ###\n");
+#endif
+    return res;
+}
+
+
+
+t1p_t* tb1=t1p_copy(manbx,tb);
+
+itv_print(tb->paf[0]->c);
+
+itv_t coeff4;
+    itv_init(coeff4);
+    num_t num4;
+    num_init(num4);
+    num_set_double(num4, 30);
+    itv_set_num(coeff4, num4);
+
+itv_set(tb1->paf[0]->c, coeff4);
+itv_set(tb1->paf[1]->c, coeff4);
+
+itv_print(tb->paf[0]->c);
+
+
+//t1p_t* tpmeet1=t1p_meet(manbx, true , tb, tb);
+
+/*itv_print(tpmeet1->paf[1]->end->coeff);
+
+itv_print(tpmeet1->paf[0]->c);*/
+
+t1p_internal_t* prbx1 = t1p_init_from_manager(manbx,AP_FUNID_MEET);
+
+printf("%u", 2*prbx1->dim);
+itv_t** ptitv2[tb->dims][prbx1->dim];
+itv_t** ptitv4[tb->dims][prbx1->dim];
+t1p_aff_get_gen(prbx1, tb, ptitv2);
+t1p_aff_get_gen(prbx1, tb1, ptitv4);
+itv_t** ptitv3[tb->dims][2*(prbx1->dim)];
+
+int i,j;
+
+for (i=0;i<tb->dims;i++){
+   for (j=0;j<2*(prbx1->dim);j++){
+       if (j>=(prbx1->dim)){
+          //ptitv3[i][j]=ptitv2[i][j-2];
+            ptitv3[i][j]=ptitv4[i][j-2];
+       }
+       else {
+       ptitv3[i][j]=ptitv2[i][j];}
+       //itv_print(ptitv[i][j]);
+     }
+}
+
+itv_print(ptitv3[0][2]);
+
+int k=2*prbx1->dim;
+prbx1->dim=0;
+
+printf("%u",prbx1->dim);
+
+t1p_t* tpmeet = t1p_alloc(manbx,0,2);
+tpmeet->paf[0] = t1p_aff_alloc_init(prbx1);
+tpmeet->paf[1] = t1p_aff_alloc_init(prbx1);
+
+t1p_nsym_t** nsymeet1[2*k];
+//for (i=0;i<tb->dims;i++){
+for(j=0;j<k;j++){
+nsymeet1[j]=t1p_nsym_add(prbx1, IN);
+t1p_aff_nsym_add(prbx1, tpmeet->paf[0], ptitv3[0][j], nsymeet1[j]);
+}
+for(j=0;j<k;j++){
+t1p_aff_build(prbx1, tpmeet->paf[1], ptitv3[1][j], j);
+}
+
+itv_print(tpmeet->paf[1]->end->coeff);
+
+printf("%u",tpmeet->paf[1]->end->pnsym->index);
+printf("%u",prbx1->dim);
+
+num_t num1;
+num_init(num1);
+itv_t tmp; itv_init(tmp);
+num_set_double(num1, 0.4);
+
+itv_mul_num(tmp, tb->paf[0]->c, num1);
+itv_print(tmp);
+
+//itv_print(tb1->paf[0]->c);
+
+itv_set(tb->paf[0]->c, tmp);
+
+itv_init(tmp);
+
+itv_mul_num(tmp, tb->paf[1]->c,num1);
+
+itv_print(tmp);
+
+itv_set(tb->paf[1]->c, tmp);
+
+num_set_double(num1, 0.6);
+
+itv_init(tmp);
+
+//itv_print(tb1->paf[0]->c);
+
+itv_mul_num(tmp, tb1->paf[0]->c,num1);
+
+itv_print(tmp);
+
+//itv_print(tb1->paf[0]->c);
+
+itv_set(tb1->paf[0]->c, tmp);
+
+//itv_print(tb1->paf[0]->c);
+
+/*itv_init(tmp);
+
+itv_mul_num(tmp, tb1->paf[1]->c,num1);
+itv_set(tb1->paf[1]->c, tmp);
+
+itv_print(tb1->paf[1]->c);
+
+//itv_add(tpmeet->paf[0]->c,tb->paf[0]->c,tb->paf[0]->c);
+//itv_add(tpmeet->paf[1]->c,tb->paf[1]->c,tb->paf[1]->c);
+
+//itv_print(tpmeet->paf[0]->c);*/
+
+
+
+New meet 
+%%%%%%%%%%%%%%%%%%%%
+
+t1p_t* t1p_meet(ap_manager_t* man, bool destructive, t1p_t* a1, t1p_t* a2)
+/* TODO: destructive not used */
+{
+    CALL();
+    t1p_internal_t* prbx1 = t1p_init_from_manager(man,AP_FUNID_MEET);
+    num_t num2;
+num_init(num2);
+num_set_double(num2, 0.4);
+num_t num4;
+num_init(num4);
+num_set_double(num4, 0.6);
+    //printf("%u", 2*prbx1->dim);
+itv_t** ptitv2[a1->dims][prbx1->dim];
+itv_t** ptitv4[a2->dims][prbx1->dim];
+t1p_aff_get_gen_num(prbx1, a1, ptitv2,num2);
+t1p_aff_get_gen_num(prbx1, a2, ptitv4,num4);
+itv_t** ptitv3[a1->dims][2*(prbx1->dim)];
+
+int i,j;
+
+
+for (i=0;i<a1->dims;i++){
+   for (j=0;j<2*(prbx1->dim);j++){
+       if (j>=(prbx1->dim)){
+            ptitv3[i][j]=ptitv4[i][j-2];
+            //itv_print(ptitv3[i][j]);
+       }
+       else {
+       ptitv3[i][j]=ptitv2[i][j];
+       //itv_print(ptitv3[i][j]);
+}
+       //itv_print(ptitv[i][j]);
+     }
+}
+
+//itv_print(ptitv3[0][2]);
+
+int k=2*prbx1->dim;
+prbx1->dim=0;
+
+//printf("%u",prbx1->dim);
+
+t1p_t* tpmeet = t1p_alloc(man,0,2);
+tpmeet->paf[0] = t1p_aff_alloc_init(prbx1);
+tpmeet->paf[1] = t1p_aff_alloc_init(prbx1);
+
+t1p_nsym_t** nsymeet1[2*k];
+//for (i=0;i<tb->dims;i++){
+for(j=0;j<k;j++){
+nsymeet1[j]=t1p_nsym_add(prbx1, IN);
+t1p_aff_nsym_add(prbx1, tpmeet->paf[0], ptitv3[0][j], nsymeet1[j]);
+}
+for(j=0;j<k;j++){
+t1p_aff_build(prbx1, tpmeet->paf[1], ptitv3[1][j], j);
+}
+
+itv_mul_num(a1->paf[0]->c, a1->paf[0]->c, num2);
+itv_mul_num(a1->paf[1]->c, a1->paf[1]->c,num2);
+itv_mul_num(a2->paf[0]->c, a2->paf[0]->c,num4);
+itv_mul_num(a2->paf[1]->c, a2->paf[1]->c,num4);
+itv_add(tpmeet->paf[0]->c,a1->paf[0]->c,a2->paf[0]->c);
+itv_add(tpmeet->paf[1]->c,a1->paf[1]->c,a2->paf[1]->c);
+
+    return tpmeet;
+}
+
+
+
+///////////// old implementation for inclusion test //////////////////
+
+CALL();
+    t1p_internal_t* pr = t1p_init_from_manager(man, AP_FUNID_IS_LEQ);
+    arg_assert(a && b && (a->dims == b->dims), abort(););
+#ifdef _T1P_DEBUG
+    fprintf(stdout, "### IS LESS or EQUAL %tx < %tx ###\n",(intptr_t)a,(intptr_t)b);
+//    t1p_fprint(stdout, man, a, 0x0);
+ //   t1p_fprint(stdout, man, b, 0x0);
+    fprintf(stdout, "### ### ###\n");
+#endif
+    size_t i;
+    bool ok;
+    tbool_t res;
+
+    man->result.flag_best = tbool_true;
+    man->result.flag_exact = tbool_true;
+
+    if (t1p_is_bottom(man, a) == tbool_true) res = tbool_true;
+    else if (t1p_is_bottom(man, b) == tbool_true) res = tbool_false;
+    else if (t1p_is_top(man, b) == tbool_true) res = tbool_true;
+    else if  (t1p_is_top(man, a) == tbool_true) res = tbool_false;
+    else if (t1p_is_eq(man, a, b)) res = tbool_true;
+    else {
+	/* General case */
+	ok = true;
+	if (a->hypercube) {
+	    if (b->hypercube) {
+		ok = true;
+	    } else {
+		ok = false;
+	    }
+	} else {
+	    if (b->hypercube) {
+		ok = true;
+	    } else {
+		/* compare interval concretisations of constrained eps */
+		size_t sizea = t1p_nsymcons_get_dimension(pr, a);
+		size_t sizeb = t1p_nsymcons_get_dimension(pr, b);
+		ap_dim_t dima = 0;
+		ap_dim_t dimb = 0;
+		for (i=0; i<sizea; i++)	{
+		    if(t1p_nsymcons_get_dimpos(pr, &dima, i, a)) {
+			if (t1p_nsymcons_get_dimpos(pr, &dimb, i, b)) {
+			    if (ap_interval_is_leq(a->gamma[dima], b->gamma[dimb])) {
+				ok &= true;
+			    } else {
+				ok &= false;
+				break;
+			    }
+			} else {
+			    ok &= true;
+			}
+		    } else {
+			if (t1p_nsymcons_get_dimpos(pr, &dimb, i, b)) {
+			    ok &= false;
+			    break;
+			} else {
+			    ok &= true;
+			}
+		    }
+		}
+	    }
+	}
+	if (ok) {
+	    for (i=0; i<a->dims; i++) {
+		if (!itv_is_leq(a->box[i], b->box[i])) {
+		    ok = false;
+		    break;
+		}
+		else if (a->paf[i] != b->paf[i]) {
+		    itv_set(a->paf[i]->itv, a->box[i]);
+		    itv_set(b->paf[i]->itv, b->box[i]);
+		    ok &= t1p_aff_is_leq_constrained(pr, a->paf[i], b->paf[i], a, b);
+		}
+		/* at the first occurence of "top" or "false" we no longer need to continue */
+		//if (!ok) break;
+	    }
+	}
+	res = tbool_of_bool(ok);
+    }
+#ifdef _T1P_DEBUG
+    fprintf(stdout, "### RESULT of IS LESS or EQUAL ###\n");
+    fprintf(stdout, "### %d ###\n",res);
+#endif
+
+
+
+t1p_t* t1p_meet(ap_manager_t* man, bool destructive, t1p_t* a1, t1p_t* a2)
+/* TODO: destructive not used */
+{
+    CALL();
+    t1p_internal_t* prbx1 = t1p_init_from_manager(man,AP_FUNID_MEET);
+    num_t num2;
+num_init(num2);
+num_set_double(num2, 0.4);
+num_t num4;
+num_init(num4);
+num_set_double(num4, 0.6);
+
+int size,size1,size2;
+
+printf("%u", a1->paf[0]->end->pnsym->index);
+printf("%u", a1->paf[1]->end->pnsym->index);
+printf("%u", a2->paf[0]->end->pnsym->index);
+printf("%u", a2->paf[1]->end->pnsym->index);
+
+printf("%u", size);
+
+if (a1->paf[0]->end->pnsym->index >= a1->paf[1]->end->pnsym->index)
+   size1=a1->paf[0]->end->pnsym->index+1;
+else
+   size1=a1->paf[1]->end->pnsym->index+1;
+if (a2->paf[0]->end->pnsym->index >= a2->paf[1]->end->pnsym->index)
+   size2=a2->paf[0]->end->pnsym->index+1;
+else
+   size2=a2->paf[1]->end->pnsym->index+1;
+
+size=size1+size2;
+
+    //printf("%u", 2*prbx1->dim);
+itv_t** ptitv2[a1->dims][size1];
+itv_t** ptitv4[a2->dims][size2];
+t1p_aff_get_gen_num(size1, a1, ptitv2,num2);
+t1p_aff_get_gen_num(size2, a2, ptitv4,num4);
+itv_t** ptitv3[a1->dims][size];
+
+int i,j;
+
+
+for (i=0;i<a1->dims;i++){
+   for (j=0;j<size;j++){
+       if (j>=(prbx1->dim)){
+            ptitv3[i][j]=ptitv4[i][j-2];
+            //itv_print(ptitv3[i][j]);
+       }
+       else {
+       ptitv3[i][j]=ptitv2[i][j];
+       //itv_print(ptitv3[i][j]);
+}
+       //itv_print(ptitv[i][j]);
+     }
+}
+
+//itv_print(ptitv3[0][2]);
+
+//int k=2*prbx1->dim;
+prbx1->dim=0;
+
+//printf("%u",prbx1->dim);
+
+t1p_t* tpmeet = t1p_alloc(man,0,2);
+tpmeet->paf[0] = t1p_aff_alloc_init(prbx1);
+tpmeet->paf[1] = t1p_aff_alloc_init(prbx1);
+
+t1p_nsym_t** nsymeet1[size];
+//for (i=0;i<tb->dims;i++){
+for(j=0;j<size;j++){
+nsymeet1[j]=t1p_nsym_add(prbx1, IN);
+t1p_aff_nsym_add(prbx1, tpmeet->paf[0], ptitv3[0][j], nsymeet1[j]);
+}
+for(j=0;j<size;j++){
+t1p_aff_build(prbx1, tpmeet->paf[1], ptitv3[1][j], j);
+}
+
+itv_mul_num(a1->paf[0]->c, a1->paf[0]->c, num2);
+itv_mul_num(a1->paf[1]->c, a1->paf[1]->c,num2);
+itv_mul_num(a2->paf[0]->c, a2->paf[0]->c,num4);
+itv_mul_num(a2->paf[1]->c, a2->paf[1]->c,num4);
+itv_add(tpmeet->paf[0]->c,a1->paf[0]->c,a2->paf[0]->c);
+itv_add(tpmeet->paf[1]->c,a1->paf[1]->c,a2->paf[1]->c);
+
+    return tpmeet;
+}
+
+
+
+itv_t coeff;
+  itv_init (coeff);
+  num_t num;
+  num_init (num);
+  num_set_double (num, 0);
+  itv_set_num (coeff, num);
+  num_t num2;
+  num_init (num2);
+  num_set_double (num2, 0.6956);  //// 0.4824 ///////
+  itv_t num2coeff;
+  itv_init (num2coeff);
+  itv_set_num (num2coeff,num2);
+  num_t num4;
+  num_init (num4);
+  num_set_double (num4, -0.3069);
+  itv_t num4coeff;
+  itv_init (num4coeff);
+  itv_set_num (num4coeff,num4);
+  num_t num6;
+  num_init (num6);
+  num_set_double (num6, -0.0642);
+  itv_t num6coeff;
+  itv_init (num6coeff);
+  itv_set_num (num6coeff,num6);
+  num_t num7;
+  num_init (num7);
+  num_set_double (num7, -0.0105);
+  itv_t num7coeff;
+  itv_init (num7coeff);
+  itv_set_num (num7coeff,num7);
+  num_t num8;
+  num_init (num8);
+  num_set_double (num8, 0.2322);
+  itv_t num8coeff;
+  itv_init (num8coeff);
+  itv_set_num (num8coeff,num8);
+  /*num_t num9;
+  num_init (num9);
+  num_set_double (num9, 2.3967);
+  itv_t num9coeff;
+  itv_init (num9coeff);
+  itv_set_num (num9coeff,num9);*/
+
+
+
+
+Inspired from box splitting, a zonotope ${\mathfrak Z}=(c,g_{(1,\cdots,n)})$ can be bisected into two sub-zonotopes ${\mathfrak Z}_{1}$ and ${\mathfrak Z}_{2}$ by splitting the $j^{th}$ generator of ${\mathfrak Z}$ such that ${\mathfrak Z}_{1} \cup {\mathfrak Z}_{2}={\mathfrak Z}$ and ${\mathfrak Z}_{1} \cap {\mathfrak Z}_{2}={\mathfrak Z}^{\ast}$ where 
+\begin{equation*}
+{\mathfrak Z}_{1}= (c,g_{(1,\cdots,n)})
+\end{equation*}
+
+\begin{equation*}
+{\mathfrak Z}_{1}= (c,g_{(1,\cdots,n)})
+\end{equation*}
+
+\begin{equation*}
+{\mathfrak Z}_{1}= (c,g_{(1,\cdots,n)})
+\end{equation*}
+
+
+\State $sum \gets 0$
+    \For {$i \gets 1:length(t.Node)$}
+    \If {$t.isleaf(i) == 1$}
+    \State $status \gets check\textrm{\_}intersect(f_{{\mathfrak Z}},zonotope(t.Node(i,1)))$
+    \If {$status == 1$}
+    \State $coverage \gets volume(zonotopeBundle({f_{{\mathfrak Z}},zonotope(t.Node(i,1))}))$
+    \State $sum \gets sum + coverage$
+    \EndIf
+    \EndIf
+    \EndFor
+
+
+
+Let us consider a zonotope ${\mathfrak Z}=(c,<g_{1},g_{2}>)$ in dimension $p=2$ which is basically a parallelotope. A parallelotope can be split into two other parallelotopes by splitting any generator. The centers of the two parallelotopes are $c1=c-g_j/2$ and $c2=c+g_j/2$ respectively. This kind of splitting is close to that on boxes (as we split the box which the zonotope is a projection of). It forces to keep the same kind of shape and the direction of the faces fixed.
+
+\indent The challenge is to compute the center of each zonotopal tiling. The strategy for finding the centers is inspired by the face enumeration problem for zonotopes \cite{richter1994zonotopal}, \cite{ferrez2005solving} which is basically solved by central arrangement of hyperplanes.

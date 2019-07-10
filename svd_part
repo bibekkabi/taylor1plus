@@ -1,0 +1,66 @@
+/* for higher dimension */
+
+double gen[3][size2];
+
+for (j = 0; j < size; j++) {
+    itv_magnitude (num, ptitv4[0][j]);
+    double_set_num (&gen[0][j], num);
+    itv_magnitude (num, ptitv4[1][j]);
+    double_set_num (&gen[1][j], num);
+    itv_magnitude (num, ptitv4[2][j]);
+    double_set_num (&gen[2][j], num);
+    if (itv_is_neg (ptitv4[0][j]) == 1)
+      gen[0][j] = -1 * gen[0][j];
+    if (itv_is_neg (ptitv4[1][j]) == 1)
+      gen[1][j] = -1 * gen[1][j];
+    if (itv_is_neg (ptitv4[2][j]) == 1)
+      gen[2][j] = -1 * gen[2][j];
+  }
+
+  int result[2];
+
+//////// svd part /////////
+
+       int m = M, n1 = N, lda = LDA, ldu = LDU, ldvt = LDVT, info, lwork;
+       double wkopt;
+       double* work;
+        /* Local arrays */
+       double s[N], u[LDU*M], vt[LDVT*N];
+       double a1[LDA*N];
+        
+     for (i=0; i<nocoeffs; i++) {
+       for (int k = 0; k < 2; k++) {
+          for (int j=0;j<3;j++){
+             a1[k*3+j]=gen[j][combsmat[i][k]-1];}}
+          //print_matrix( "The matrix", m, n1, a, ldu);
+          lwork = -1;
+        dgesvd_( "A", "N", &m, &n1, a1, &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork,
+         &info );
+        lwork = (int)wkopt;
+        work = (double*)malloc( lwork*sizeof(double) );
+        /* Compute SVD */
+        dgesvd_( "A", "N", &m, &n1, a1, &lda, s, u, &ldu, vt, &ldvt, work, &lwork,
+         &info );
+        /* Check for convergence */
+        if( info > 0 ) {
+                printf( "The algorithm computing SVD failed to converge.\n" );
+                exit( 1 );
+        }
+        /* Print singular values */
+        //print_matrix( "Singular values", 1, n1, s, 1 );
+        /* Print left singular vectors */
+        //print_matrix( "Left singular vectors (stored columnwise)", m, m, u, ldu );
+        /* Print right singular vectors */
+        //print_matrix( "Right singular vectors (stored rowwise)", n1, n1, vt, ldvt );
+        /* Free workspace */
+        free( (void*)work );
+  
+        for (int p=0;p<3;p++){
+      //printf ("%f \t", gen[j][result[k]-1]);
+        gnormal[p][i]=u[2*3+p];
+        //printf("%f", gnormal[p][i]);
+        //printf("\n");
+     }
+
+        //exit( 0 );
+      }

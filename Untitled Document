@@ -1,0 +1,41 @@
+/* 2-dimension */
+
+  num_t num1;
+  num_init (num1);
+
+  for (j = 0; j < size2; j++) {
+    itv_mul (pr->itv, ptitv4[1][j], coeff, ptitv4[1][j]);
+  }
+
+///////////////// Gnormal=flip(G2) //////////////////
+
+  itv_t tmp;
+  itv_init (tmp);
+
+  /*scanf ("%f", &b1);
+     /////////// printing //////////
+     for (i = 0; i < b->dims; i++) {
+     for (j = 0; j < size2; j++) {
+     itv_print (ptitv4[i][j]);
+     }
+     }
+
+     scanf ("%f", &b1); */
+
+  for (j = 0; j < size2; j++) {
+    itv_set (tmp, ptitv4[0][j]);
+    itv_set (ptitv4[0][j], ptitv4[1][j]);
+    itv_set (ptitv4[1][j], tmp);
+  }
+
+  /*scanf ("%f", &b1);
+     /////////// printing //////////
+     for (i = 0; i < b->dims; i++) {
+     for (j = 0; j < size2; j++) {
+     itv_print (ptitv4[i][j]);
+     }
+     }
+
+     scanf ("%f", &b1); */
+
+/* 2-dimension */
