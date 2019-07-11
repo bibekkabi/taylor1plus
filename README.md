@@ -15,11 +15,11 @@ In the current version of taylor1+ few new operations have been included. They a
 
 3. The **vertex representation of a zonotope (t1p_to_generator_array)**: to compute all the vertices of a zonotope.
    We enumerate the vertices of a zonotope as sign vectors of the so-called hyperplane arrangement [5] corresponding to a zonotope
-   This function is very useful if someone wants to plot a zonotope. One can a write a SVG function and call this fucntion to access the vertices.  
+   This function is very useful if someone wants to plot a zonotope. One can a write a SVG function and call this function to access the vertices.  
    
    All the above functions are inside **t1p_constructor.c**
    
-4. The **split function for zonotopes (t1p_tilings)**: to split a zonotope into a set of parallelotopes such that the union of the  parallelotopes is the original zonotope. Note: there is no overlap between any two parallelotopes [SWIM2016](https://swim2016.sciencesconf.org/data/pages/Kabi_Goubault_Putot.pdf),[Poster@Marktoberdorf](https://asimod.in.tum.de/2017/posters/Kabi_Bibek.pdf).
+4. The **split function for zonotopes (t1p_tilings)**: to split a zonotope into a set of parallelotopes such that the union of the  parallelotopes is the original zonotope. Note: there is no overlap between any two parallelotopes [[SWIM2016]](https://swim2016.sciencesconf.org/data/pages/Kabi_Goubault_Putot.pdf),[[Poster@Marktoberdorf]](https://asimod.in.tum.de/2017/posters/Kabi_Bibek.pdf).
   This function is inside **t1p_tilings.c**
   This is the first time a split operation is inclued in Apron. 
   However, this function is only restricted to taylor1+. 
