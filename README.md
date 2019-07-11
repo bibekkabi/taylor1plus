@@ -15,7 +15,7 @@ In the current version of taylor1+ few new operations have been included. They a
 
 3. The **vertex representation of a zonotope (t1p_to_generator_array)**: to compute all the vertices of a zonotope.
    We enumerate the vertices of a zonotope as sign vectors of the so-called hyperplane arrangement [6] corresponding to a zonotope [4]. 
-   This function is very useful if someone wants to plot a zonotope. One can a write a SVG function and call this function to access the vertices.  
+   This function is very useful if someone wants to plot a zonotope. One can write a SVG function and call this function to access the vertices.  
    
    All the above functions are inside **t1p_constructor.c**
    
