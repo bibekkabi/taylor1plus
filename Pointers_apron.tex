@@ -1,0 +1,96 @@
+\documentclass[a4paper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{url}
+\usepackage{hyperref}
+
+\title{Apron and Taylor1Plus}
+
+\author{COSYNUS, Laboratoire d'informatique de l'Ecole Polytechnique, CNRS}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\sloppy
+
+\begin{abstract}
+This document is a detailed explanation about: how to install and use Taylor1Plus. 
+\end{abstract}
+
+\section{Apron}
+\label{sec:introduction}
+The first and the most significant step is to have Apron (library of numerical abstract domains for static analysis by
+abstract interpretation) and all it's prerequisites installed. The prerequisites for C API are
+\begin{itemize}
+\item GCC
+\item GMP 5.x.y and MPFR 3.x.y or up
+\end{itemize}
+If someone wants to use the OCaml bindings, the prerequisites for OCaml API are 
+\begin{itemize}
+\item MLGMPIDL (http://www.inrialpes.fr/pop-art/people/bjeannet/mlxxxidl-forge/mlgmpidl, SVN: svn://scm.gforge.inria.fr/svn/mlxxxidl/mlgmpidl/)
+\item OCaml 3.11 or up (http://www.caml.org)
+\item CamlIDL 1.05 (http://caml.inria.fr/camlidl)
+\item perl
+\end{itemize}
+One can install Apron through OPAM package manager or via the source files. In order to use OPAM, the command is 
+\textbf{opam install apron}. The prerequisites can also be installed using OPAM. However, it is highly recommended to install Apron using the source files if one is intending to rework with the abstract domains. Kindly, pursue the following steps for installing Apron through the source.
+\begin{itemize}
+\item Depending on the way one installs OCaml, one might end up missing OCaml native-code compiler (OCAMLOPT).
+\item Please be sure to install \textbf{ocaml-native-compilers}
+\begin{itemize}
+\item For Ubuntu, sudo apt-get install ocaml-native-compilers should do
+\item Otherwise, you can find information in this link: \url{https://packages.ubuntu.com/xenial/ocaml-native-compilers}
+\end{itemize}
+\item Once all the prerequisites are installed, one can download Apron through this SVN link:
+      svn co svn://scm.gforge.inria.fr/svnroot/apron/apron/trunk apron
+\item The distribution through the above SVN link is the last committed version. 
+\end{itemize}
+\begin{itemize}
+\item Once Apron has been downloaded, go inside the Apron directory
+\item Run the command \textbf{./configure} followed by \textbf{make}, \textbf{sudo make install}
+\item This should install the Apron library
+\end{itemize}
+
+\section{Taylor1plus}
+Taylor1+ is an efficient implementation of the affine forms-based numerical abstract domain or zontopes in Apron \cite{taylor1}. The affine forms-based numerical abstract domain was introduced by Eric Goubault and Sylvie Putot in \cite{affineabstract}. Taylor1+ defines the meet operation of two affine sets as a logical product of standard zonotopes and boxes \cite{meet}. It implements several join operations over such logical products. It also implements test for inclusion check, test for intersection check and splitting operation for zonotopes \cite{split}. The domain requires the APRON library wrappers to work properly. \\
+\indent Inside the directory of Taylor1plus there are few test files like ``t1p\_test\_eval\_texp.c''. If someone wants to test the file or use it for his/her own purpose, first one should uncomment the line in the makefile of Taylor1plus saying:
+\begin{verbatim}
+test%: t1p_test_eval_texp%.o 
+	$(CC) $(CFLAGS) -DNUM_DOUBLE -o $@ $(LIBS) -L. $< -lt1p$* -lbox$* 
+-lpolkaMPQ_debug -lapron t1p_internal$*.o t1p_representation$*.o 
+\end{verbatim}
+Now, compiling by ``make'' may produce an error claiming ``undefined reference to box\_manager\_alloc''. This can be taken care of by re-ordering the above syntax as:
+\begin{verbatim}
+test%: t1p_test_eval_texp%.o 
+	$(CC) $(CFLAGS) -DNUM_DOUBLE -o $@ t1p_internal$*.o 
+t1p_representation$*.o $(LIBS) -L. $< -lt1p$* -lbox$* -lpolkaMPQ_debug -lapron 
+\end{verbatim}
+
+
+
+\begin{thebibliography}{9}
+%\bibitem{nano3}
+ % K. Grove-Rasmussen og Jesper Nygård,
+  %\emph{Kvantefænomener i Nanosystemer}.
+  %Niels Bohr Institute \& Nano-Science Center, Københavns Universitet
+
+\bibitem{taylor1}
+Ghorbal, K., Goubault, E., \& Putot, S. (2009, June). The zonotope abstract domain taylor1+. In International Conference on Computer Aided Verification (pp. 627-633). Springer, Berlin, Heidelberg.
+
+\bibitem{affineabstract}
+Goubault, E., \& Putot, S. (2006, August). Static analysis of numerical algorithms. In International Static Analysis Symposium (pp. 18-34). Springer, Berlin, Heidelberg.
+
+\bibitem{meet}
+Ghorbal, K., Goubault, E., \& Putot, S. (2010, July). A logical product approach to zonotope intersection. In International Conference on Computer Aided Verification (pp. 212-226). Springer, Berlin, Heidelberg.
+
+\bibitem{split}
+\url{https://swim2016.sciencesconf.org/conference/swim2016/pages/Kabi_Goubault_Putot.pdf}
+
+\end{thebibliography}
+\end{document}
